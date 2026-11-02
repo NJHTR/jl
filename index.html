@@ -38,7 +38,7 @@
     .intensity-glass:focus-visible { outline: 2px solid #3978d8; outline-offset: 2px; border-radius: 12px; }
     .range-value { width: 34px; color: #657582; font-size: 12px; text-align: right; }
     .stage { position: relative; isolation: isolate; overflow: hidden; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; background: #dfe9f1; }
-    .stage-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #dfe9f1 url("assets/liquid-wave-frame.jpg") center / cover no-repeat; pointer-events: none; }
+    .stage-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #dfe9f1; pointer-events: none; }
     .stage-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(239,248,252,.32),rgba(243,248,251,.16) 45%,rgba(230,240,248,.28)); }
     .backdrop-video { position: absolute; inset: -2%; width: 104%; height: 104%; object-fit: cover; opacity: var(--backdrop-opacity, .32); filter: saturate(.82) brightness(1.08) contrast(.94); transition: opacity 180ms ease; }
     .app-shell { position: relative; z-index: 1; isolation: isolate; display: grid; grid-template-rows: 58px minmax(0, 1fr); gap: 10px; width: 100%; height: 100%; padding: 10px; }
@@ -510,7 +510,6 @@
         return;
       }
       const target = placement === 'hero' ? hero : stageBg;
-      stageBg.style.backgroundImage = placement === 'full' ? `url("${assets[selected].poster}")` : 'none';
       if (video.parentElement !== target) target.append(video);
       if (playbackEnabled) video.play().catch(() => {}); else video.pause();
     }
@@ -590,7 +589,6 @@
     function selectAsset(key) {
       selected = key;
       const asset = assets[key];
-      if (placement === 'full') stageBg.style.backgroundImage = `url("${asset.poster}")`;
       video.src = asset.src;
       video.poster = asset.poster;
       searchGlass.setAttribute('wallpaper', asset.poster);
