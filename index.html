@@ -32,8 +32,10 @@
     .segmented { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid #e4e9ef; border-radius: 7px; background: #f4f6f8; }
     .segmented button { min-height: 29px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: #697783; cursor: pointer; font-size: 12px; }
     .segmented button[aria-pressed="true"] { background: white; color: #276bd4; box-shadow: 0 1px 4px #24364b1a; }
-    .range-control { display: flex; align-items: center; gap: 9px; min-width: 180px; }
-    .range-control input { width: 118px; accent-color: #3978d8; }
+    .range-control { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; min-width: 0; width: 100%; }
+    .range-heading { display: flex; align-items: center; justify-content: space-between; min-height: 23px; padding-inline: 5px; }
+    .intensity-glass { display: block; width: 100%; height: 96px; min-width: 0; touch-action: none; }
+    .intensity-glass:focus-visible { outline: 2px solid #3978d8; outline-offset: 2px; border-radius: 12px; }
     .range-value { width: 34px; color: #657582; font-size: 12px; text-align: right; }
     .stage { position: relative; isolation: isolate; overflow: hidden; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; background: #dfe9f1; }
     .stage-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #dfe9f1 url("assets/liquid-wave-frame.jpg") center / cover no-repeat; pointer-events: none; }
@@ -93,11 +95,11 @@
     .list-add { display: grid; width: 27px; height: 27px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: #718491; cursor: pointer; }
     .list-add:hover { background: rgba(255,255,255,.55); color: #3478a4; }
     .list-add svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
-    .search-small { display: flex; align-items: flex-start; gap: 7px; min-height: 34px; margin: clamp(7px, .7vw, 10px); padding: 6px 9px; border: 1px solid rgba(255,255,255,.76); border-radius: 10px; color: #657582; background: rgba(255,255,255,.2); box-shadow: inset 0 1px rgba(255,255,255,.72), 0 3px 10px rgba(53,77,91,.07); font-size: var(--ui-small); transition: background .16s ease, border-color .16s ease, box-shadow .16s ease; }
+    .search-small { display: flex; align-items: center; gap: 7px; min-height: 34px; margin: clamp(7px, .7vw, 10px); padding: 6px 9px; border: 1px solid rgba(255,255,255,.76); border-radius: 10px; color: #657582; background: rgba(255,255,255,.2); box-shadow: inset 0 1px rgba(255,255,255,.72), 0 3px 10px rgba(53,77,91,.07); font-size: var(--ui-small); transition: background .16s ease, border-color .16s ease, box-shadow .16s ease; }
     .search-small:focus-within { border-color: rgba(128,180,227,.72); background: rgba(255,255,255,.31); box-shadow: inset 0 1px rgba(255,255,255,.82), 0 0 0 2px rgba(75,139,205,.11), 0 4px 12px rgba(53,77,91,.08); }
     .search-small svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: .72; }
-    .search-small > svg { flex: 0 0 auto; margin-top: 3px; }
-    .search-small textarea { flex: 1; min-width: 0; height: 20px; max-height: 72px; padding: 1px 0; overflow: hidden; resize: none; border: 0; outline: 0; appearance: none; color: #465965; background: transparent; font: inherit; line-height: 1.5; }
+    .search-small > svg { display: block; flex: 0 0 auto; margin: 0; }
+    .search-small textarea { flex: 1; min-width: 0; height: 20px; max-height: 72px; padding: 0; overflow: hidden; resize: none; border: 0; outline: 0; appearance: none; color: #465965; background: transparent; font: inherit; line-height: 20px; }
     .search-small textarea::placeholder { color: #7f909b; }
     .conversation { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 55px; padding: 7px 10px; border-bottom: 1px solid #edf0f4; }
     .conversation.selected { background: rgba(215,233,255,.24); box-shadow: inset 0 1px #ffffff9c, inset 0 -1px #ffffff8c; }
@@ -246,6 +248,9 @@
     .settings-popover .control-group { padding: 11px 0; border-top: 1px solid rgba(95,119,134,.12); }
     .settings-popover .control-group:first-child { border-top: 0; padding-top: 0; }
     .settings-popover .control-label { min-width: 64px; color: #526774; font-weight: 650; }
+    .settings-popover .range-control { padding-block: 5px; }
+    .settings-popover .range-heading .control-label { min-width: 0; margin: 0; }
+    .settings-popover .range-value { width: auto; color: #315e7d; font-weight: 650; }
     .notification-popover { position: absolute; z-index: 13; top: 76px; right: 58px; width: min(340px, calc(100% - 24px)); overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,.92); border-radius: 16px; background: rgba(240,248,252,.92); box-shadow: inset 0 0 0 1px rgba(255,255,255,.34), 0 20px 48px rgba(24,46,61,.22); backdrop-filter: blur(22px) saturate(130%); }
     .notification-popover[hidden] { display: none; }
     .notification-head { display: flex; justify-content: space-between; align-items: center; margin: 2px 3px 8px; }
@@ -435,7 +440,7 @@
         <section class="controls" aria-label="界面设置">
           <div class="control-group"><span class="control-label">模块</span><div class="segmented" id="view-controls"><button type="button" data-view="chat" aria-pressed="false">消息</button><button type="button" data-view="workbench" aria-pressed="true">工作台</button><button type="button" data-view="mail" aria-pressed="false">邮件</button></div></div>
           <div class="control-group"><span class="control-label">背景位置</span><div class="segmented" id="placement-controls"><button type="button" data-placement="full" aria-pressed="true">应用底层</button><button type="button" data-placement="hero" aria-pressed="false">欢迎区底层</button><button type="button" data-placement="off" aria-pressed="false">关闭</button></div></div>
-          <div class="control-group range-control"><label class="control-label" for="opacity">背景强度</label><input id="opacity" type="range" min="0" max="55" value="32"><output class="range-value" id="opacity-value">32%</output></div>
+          <div class="control-group range-control"><div class="range-heading"><span class="control-label" id="opacity-label">背景强度</span><output class="range-value" id="opacity-value">32%</output></div><liquid-glass id="intensity-glass" class="intensity-glass" mode="slider-card" wallpaper="assets/liquid-wave-frame.jpg" dpr="1" role="slider" tabindex="0" aria-labelledby="opacity-label" aria-valuemin="0" aria-valuemax="55" aria-valuenow="32" aria-valuetext="32%"></liquid-glass></div>
           <div class="control-group" id="asset-controls"><span class="control-label">动态素材</span><div class="segmented"><button type="button" data-asset="wave" aria-pressed="true">液态虹彩</button><button type="button" data-asset="orange" aria-pressed="false">暖橙流体</button><button type="button" data-asset="ink" aria-pressed="false">粉蓝墨水</button></div></div>
           <div class="control-group"><span class="control-label">播放</span><div class="segmented" id="play-controls"><button type="button" data-play="on" aria-pressed="true">动态</button><button type="button" data-play="off" aria-pressed="false">静帧</button></div></div>
         </section>
@@ -470,6 +475,10 @@
     const settingsTrigger = document.querySelector('#settings-trigger');
     const settingsPopover = document.querySelector('#settings-popover');
     const settingsClose = document.querySelector('#settings-close');
+    const intensityGlass = document.querySelector('#intensity-glass');
+    const intensityValue = document.querySelector('#opacity-value');
+    const intensityMin = 0;
+    const intensityMax = 55;
     const notificationTrigger = document.querySelector('#notification-trigger');
     const notificationPopover = document.querySelector('#notification-popover');
     railGlass.setTabs([[{ icon: '', label: '' }, { icon: '', label: '' }, { icon: '', label: '' }]]);
@@ -492,7 +501,7 @@
     const backdropCanvases = new WeakMap();
     const backdropContexts = new WeakMap();
     let lastGlassFrameAt = 0;
-    const glassTargets = [glassSurfaces, railGlass, searchGlass];
+    const glassTargets = [glassSurfaces, railGlass, searchGlass, intensityGlass];
     function updateVideoTarget() {
       if (placement === 'off' || (placement === 'hero' && activeView !== 'workbench')) {
         video.pause();
@@ -517,7 +526,7 @@
       const videoOpacity = Number.parseFloat(getComputedStyle(video).opacity) || 0;
       const videoFilter = getComputedStyle(video).filter;
       glassTargets.forEach((target) => {
-        if (!target.isConnected || (target === searchGlass && searchOverlay.hidden)) return;
+        if (!target.isConnected || (target === searchGlass && searchOverlay.hidden) || (target === intensityGlass && settingsPopover.hidden)) return;
         const rect = target.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
         const pixelRatio = window.devicePixelRatio || 1;
@@ -587,6 +596,7 @@
       searchGlass.setAttribute('wallpaper', asset.poster);
       glassSurfaces.setAttribute('wallpaper', asset.poster);
       railGlass.setAttribute('wallpaper', asset.poster);
+      intensityGlass.setAttribute('wallpaper', asset.poster);
       video.load();
       updateVideoTarget();
       requestAnimationFrame(syncGlassVideoFrame);
@@ -738,6 +748,7 @@
       closeNotifications();
       settingsPopover.hidden = !willOpen;
       settingsTrigger.setAttribute('aria-expanded', String(willOpen));
+      if (willOpen) requestAnimationFrame(syncGlassVideoFrame);
     });
     settingsClose.addEventListener('click', () => closeSettings(true));
     notificationTrigger.addEventListener('click', () => {
@@ -816,11 +827,34 @@
       requestAnimationFrame(syncGlassVideoFrame);
     }));
     document.querySelectorAll('[data-asset]').forEach((b) => b.addEventListener('click', () => selectAsset(b.dataset.asset)));
-    document.querySelector('#opacity').addEventListener('input', (event) => {
-      const value = Number(event.target.value);
-      document.querySelector('#opacity-value').textContent = `${value}%`;
-      video.style.setProperty('--backdrop-opacity', String(value / 100));
+    function setBackgroundIntensity(value) {
+      const clamped = Math.max(intensityMin, Math.min(intensityMax, Math.round(value)));
+      intensityValue.textContent = `${clamped}%`;
+      intensityGlass.setAttribute('aria-valuenow', String(clamped));
+      intensityGlass.setAttribute('aria-valuetext', `${clamped}%`);
+      video.style.setProperty('--backdrop-opacity', String(clamped / 100));
       requestAnimationFrame(syncGlassVideoFrame);
+      return clamped;
+    }
+    function setBackgroundIntensityFromKeyboard(value) {
+      const clamped = setBackgroundIntensity(value);
+      intensityGlass.setState({ sliderValue: clamped / intensityMax * 100 });
+    }
+    intensityGlass.addEventListener('lg-statechange', (event) => {
+      if (typeof event.detail?.sliderValue === 'number') setBackgroundIntensity(event.detail.sliderValue / 100 * intensityMax);
+    });
+    intensityGlass.addEventListener('keydown', (event) => {
+      const current = Number(intensityGlass.getAttribute('aria-valuenow'));
+      const step = event.shiftKey ? 5 : 1;
+      const keys = { ArrowLeft: current - step, ArrowDown: current - step, ArrowRight: current + step, ArrowUp: current + step, PageDown: current - 5, PageUp: current + 5, Home: intensityMin, End: intensityMax };
+      if (keys[event.key] === undefined) return;
+      event.preventDefault();
+      setBackgroundIntensityFromKeyboard(keys[event.key]);
+    });
+    customElements.whenDefined('liquid-glass').then(() => {
+      const current = Number(intensityGlass.getAttribute('aria-valuenow'));
+      intensityGlass.setState({ sliderValue: current / intensityMax * 100 });
+      setBackgroundIntensity(current);
     });
     document.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => {
       const on = b.dataset.play === 'on';
