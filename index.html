@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>协作 IM · 动态背景布局审片</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif; color: #26343b; background: #f2f5f8; --blue: #3478e5; --muted: #7b8996; --line: #e5eaf0; --shell-gap: clamp(7px, .7vw, 12px); --shell-pad: clamp(7px, .7vw, 12px); --topbar-height: clamp(54px, 6.4vh, 68px); --rail-width: clamp(64px, 4.8vw, 78px); --panel-radius: clamp(16px, 1.25vw, 20px); --ui-font: 12px; --ui-small: 10px; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body { margin: 0; min-width: 320px; }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    .workbench-view, .settings-popover, .mail-reading, .search-form textarea, .search-small textarea, .composer-input { scrollbar-width: thin; scrollbar-color: rgba(49,88,109,.42) transparent; }
+    .workbench-view, .settings-popover, .mail-reading { scrollbar-gutter: stable; }
+    *::-webkit-scrollbar { width: 8px; height: 8px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 8px; background: rgba(49,88,109,.42); background-clip: content-box; }
+    *::-webkit-scrollbar-thumb:hover { background-color: rgba(49,88,109,.64); }
+    *::-webkit-scrollbar-thumb:active { background-color: rgba(39,105,146,.78); }
+    *::-webkit-scrollbar-corner { background: transparent; }
+    .page { width: 100%; height: 100%; margin: 0; padding: 0; }
+    .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 18px; }
+    .page-head > div { min-width: 0; max-width: 100%; }
+    h1 { margin: 0; font-size: 23px; font-weight: 650; }
+    .lead { width: 100%; margin: 7px 0 0; max-width: 710px; color: #72808c; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+    .eyebrow { display: block; margin-bottom: 7px; color: #397c74; font-size: 11px; font-weight: 700; }
+    .controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px 24px; margin-bottom: 14px; padding: 13px 15px; border: 1px solid #e1e7ee; border-radius: 8px; background: #fff; }
+    .control-group { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+    .control-label { margin-right: 5px; color: #72808c; font-size: 12px; }
+    .segmented { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid #e4e9ef; border-radius: 7px; background: #f4f6f8; }
+    .segmented button { min-height: 29px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: #697783; cursor: pointer; font-size: 12px; }
+    .segmented button[aria-pressed="true"] { background: white; color: #276bd4; box-shadow: 0 1px 4px #24364b1a; }
+    .range-control { display: flex; align-items: center; gap: 9px; min-width: 180px; }
+    .range-control input { width: 118px; accent-color: #3978d8; }
+    .range-value { width: 34px; color: #657582; font-size: 12px; text-align: right; }
+    .stage { position: relative; isolation: isolate; overflow: hidden; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; background: #dfe9f1; }
+    .stage-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #dfe9f1 url("assets/liquid-wave-frame.jpg") center / cover no-repeat; pointer-events: none; }
+    .stage-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(239,248,252,.32),rgba(243,248,251,.16) 45%,rgba(230,240,248,.28)); }
+    .backdrop-video { position: absolute; inset: -2%; width: 104%; height: 104%; object-fit: cover; opacity: var(--backdrop-opacity, .32); filter: saturate(.82) brightness(1.08) contrast(.94); transition: opacity 180ms ease; }
+    .app-shell { position: relative; z-index: 1; isolation: isolate; display: grid; grid-template-rows: 58px minmax(0, 1fr); gap: 10px; width: 100%; height: 100%; padding: 10px; }
+    .app-glass-surfaces { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; mask-image: var(--glass-mask); -webkit-mask-image: var(--glass-mask); mask-mode: alpha; -webkit-mask-mode: alpha; transition: opacity 160ms ease-out; }
+    html.glass-ready .app-glass-surfaces { opacity: .48; }
+    .app-topbar, .app-body { position: relative; z-index: 1; }
+    .app-topbar { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 14px; overflow: hidden; padding: 0 14px 0 16px; border: 1px solid rgba(255,255,255,.92); border-radius: 18px; background: rgba(246,251,254,.46); background-clip: padding-box; box-shadow: inset 0 0 0 1px rgba(255,255,255,.38), 0 9px 22px rgba(41,72,92,.12); }
+    .top-left, .top-right { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { display: block; width: auto; height: 31px; max-width: min(390px, 48vw); object-fit: contain; object-position: left center; }
+    .top-right { justify-self: end; }
+    .top-action { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid rgba(255,255,255,.84); border-radius: 12px; background: rgba(255,255,255,.26); color: #40525f; box-shadow: inset 0 0 0 1px rgba(255,255,255,.24), 0 5px 14px rgba(53,77,91,.12); cursor: pointer; }
+    .top-action:hover, .top-action[aria-expanded="true"] { background: rgba(255,255,255,.48); color: #2469a6; }
+    .top-action:focus-visible, .settings-close:focus-visible, .notification-row:focus-visible { outline: 2px solid #3478e5; outline-offset: 2px; }
+    .notification-trigger { position: relative; }
+    .top-action svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+    .search-trigger .search-close-icon { display: none; }
+    .app-shell.search-open .search-trigger .search-open-icon { display: none; }
+    .app-shell.search-open .search-trigger .search-close-icon { display: block; }
+    .search-overlay { position: absolute; inset: 0; z-index: 10; display: grid; justify-items: center; align-content: start; padding: clamp(110px, 18vh, 165px) 16px 16px; background: rgba(23,39,52,.08); pointer-events: none; }
+    .search-overlay[hidden] { display: none; }
+    .search-overlay:not([hidden]) .search-dialog { animation: search-rise .2s ease-out both; }
+    .search-dialog { position: relative; isolation: isolate; width: min(var(--search-dialog-width, 520px), calc(100vw - 32px)); min-height: 124px; overflow: hidden; border: 1px solid #fffffff0; border-radius: 18px; background: rgba(239,248,252,.62); box-shadow: inset 0 1px #ffffffed, 0 20px 48px #1d364b30; pointer-events: auto; transition: width 180ms cubic-bezier(.2,.7,.2,1); }
+    @keyframes search-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .search-dialog-glass { position: absolute; top: 0; left: 0; z-index: 0; display: block; width: 780px; max-width: calc(100vw - 32px); height: 280px; opacity: 0; pointer-events: none; transition: opacity 120ms ease-out; }
+    html.glass-ready .search-dialog.search-ready .search-dialog-glass { opacity: 1; }
+    .search-dialog-content { position: relative; z-index: 1; padding: 15px 16px 13px; }
+    .search-dialog h2 { margin: 0 0 11px; color: #405461; font-size: 12px; font-weight: 600; }
+    .search-form { display: flex; align-items: flex-start; gap: 9px; min-height: 43px; padding: 6px 7px 6px 12px; border: 1px solid #ffffffe8; border-radius: 11px; background: rgba(255,255,255,.58); box-shadow: inset 0 1px #ffffffd9, 0 3px 12px #26435812; }
+    .search-form > svg { flex: 0 0 auto; margin-top: 7px; }
+    .search-form textarea { flex: 1; min-width: 0; height: 29px; max-height: min(168px, 26vh); padding: 5px 0 3px; overflow: hidden; resize: none; border: 0; outline: 0; color: #263943; background: transparent; font: inherit; font-size: 14px; line-height: 1.45; }
+    .search-form textarea::placeholder { color: #778993; }
+    .search-form > button { margin-top: 1px; }
+    .search-form button { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border: 0; border-radius: 50%; color: #526b7a; background: transparent; cursor: pointer; }
+    .search-form button:hover { background: rgba(255,255,255,.5); }
+    .search-form svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .search-hint { min-height: 16px; margin: 8px 2px 0; color: #6b7e89; font-size: 10px; }
+    .avatar { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgba(255,255,255,.86); border-radius: 10px; background: rgba(215,233,245,.78); color: #315d78; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); font-size: 13px; font-weight: 700; }
+    .app-body { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; min-height: 0; }
+    .rail { position: relative; isolation: isolate; align-self: center; width: 68px; height: min(220px, calc(100% - 24px)); min-width: 0; min-height: 0; margin: 0 auto; overflow: hidden; border: 1px solid rgba(255,255,255,.9); border-radius: 28px; background-clip: padding-box; box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 10px 25px rgba(41,72,92,.12); }
+    .rail-glass { position: absolute; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; overflow: hidden; opacity: 0; pointer-events: auto; touch-action: none; transition: opacity 160ms ease-out; }
+    html.glass-ready .rail-glass { opacity: 1; }
+    .rail-items { position: absolute; z-index: 1; top: 50%; left: 0; width: 100%; height: min(192px, calc(100% - 24px)); display: flex; flex-direction: column; transform: translateY(-50%); pointer-events: none; }
+    .rail-item { display: grid; flex: 1 1 0; justify-items: center; align-content: center; gap: 4px; width: 100%; min-height: 0; padding: 4px 1px; border: 0; border-radius: 13px; background: transparent; color: #667987; font-size: 9px; transition: color .18s ease; pointer-events: none; }
+    .rail-item:hover { color: #315c7a; }
+    .rail-item.active { color: #2469a6; }
+    .rail-item:focus-visible { outline: 2px solid #3478e5; outline-offset: -3px; }
+    .rail-item > svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; opacity: .92; }
+    .view { display: none; min-width: 0; min-height: 0; }
+    .view:not(.active) { display: none; }
+    .view.active { display: block; }
+    .view.active.chat-view { display: grid; grid-template-columns: minmax(200px, 25%) minmax(0, 1fr); height: 100%; overflow: hidden; border: 1px solid rgba(255,255,255,.92); border-radius: 18px; background: rgba(245,250,253,.48); background-clip: padding-box; box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 11px 26px rgba(41,72,92,.1); }
+    .chat-list { overflow: hidden; border-right: 1px solid #ffffff9c; background: rgba(248,250,252,.42); }
+    .list-heading { display: flex; align-items: center; justify-content: space-between; height: 46px; padding: 0 12px; border-bottom: 1px solid #e8edf2; font-size: 12px; font-weight: 650; }
+    .list-add { display: grid; width: 27px; height: 27px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: #718491; cursor: pointer; }
+    .list-add:hover { background: rgba(255,255,255,.55); color: #3478a4; }
+    .list-add svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+    .search-small { display: flex; align-items: flex-start; gap: 7px; min-height: 34px; margin: clamp(7px, .7vw, 10px); padding: 6px 9px; border: 1px solid rgba(255,255,255,.76); border-radius: 10px; color: #657582; background: rgba(255,255,255,.2); box-shadow: inset 0 1px rgba(255,255,255,.72), 0 3px 10px rgba(53,77,91,.07); font-size: var(--ui-small); transition: background .16s ease, border-color .16s ease, box-shadow .16s ease; }
+    .search-small:focus-within { border-color: rgba(128,180,227,.72); background: rgba(255,255,255,.31); box-shadow: inset 0 1px rgba(255,255,255,.82), 0 0 0 2px rgba(75,139,205,.11), 0 4px 12px rgba(53,77,91,.08); }
+    .search-small svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: .72; }
+    .search-small > svg { flex: 0 0 auto; margin-top: 3px; }
+    .search-small textarea { flex: 1; min-width: 0; height: 20px; max-height: 72px; padding: 1px 0; overflow: hidden; resize: none; border: 0; outline: 0; appearance: none; color: #465965; background: transparent; font: inherit; line-height: 1.5; }
+    .search-small textarea::placeholder { color: #7f909b; }
+    .conversation { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 55px; padding: 7px 10px; border-bottom: 1px solid #edf0f4; }
+    .conversation.selected { background: rgba(215,233,255,.24); box-shadow: inset 0 1px #ffffff9c, inset 0 -1px #ffffff8c; }
+    .person { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 7px; background: #dce9f1; color: #477080; font-size: 10px; }
+    .person.coral { background: #f8e2d9; color: #a16a4c; }
+    .person.green { background: #e0eddf; color: #5d8060; }
+    .conv-name { overflow: hidden; font-size: 11px; font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
+    .conv-preview { overflow: hidden; margin-top: 4px; color: #687a86; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .conv-time { color: #71838e; font-size: 9px; align-self: start; padding-top: 3px; }
+    .chat-main { display: grid; grid-template-rows: 48px minmax(0, 1fr) 94px; min-width: 0; min-height: 0; background: rgba(248,250,252,.26); }
+    .chat-title { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid #ffffff80; background: rgba(255,255,255,.22); }
+    .chat-title strong { font-size: 13px; }
+    .member-summary { display: inline-flex; align-items: center; gap: 8px; color: #5f727e; font-size: 10px; }
+    .member-stack { display: flex; align-items: center; padding-left: 5px; }
+    .member-avatar { display: grid; width: 25px; height: 25px; margin-left: -6px; place-items: center; border: 2px solid rgba(245,250,253,.94); border-radius: 8px; color: #35586d; background: #dce9f1; box-shadow: 0 2px 5px rgba(39,60,73,.1); font-size: 8px; font-weight: 700; }
+    .member-avatar:nth-child(2) { background: #f7ded6; color: #966047; }
+    .member-avatar:nth-child(3) { background: #dcecdf; color: #56795d; }
+    .member-avatar:nth-child(4) { background: #e7e0f3; color: #6a5a88; }
+    .member-avatar.member-more { border-style: dashed; background: rgba(244,248,251,.94); color: #71828d; font-size: 10px; letter-spacing: 1px; }
+    .member-avatar.member-tail { background: #e8edf7; color: #566b88; }
+    .messages { display: flex; flex-direction: column; justify-content: end; gap: 12px; overflow: hidden; padding: 18px 18px; background: rgba(245,248,251,.25); }
+    .timestamp { margin-bottom: 5px; color: #667985; font-size: 10px; text-align: center; }
+    .bubble { max-width: 74%; padding: 9px 11px; border: 1px solid #e5eaf0; border-radius: 7px; background: rgba(255,255,255,.91); color: #384751; font-size: 10px; line-height: 1.55; box-shadow: 0 1px 2px #24364b0a; }
+    .bubble.outgoing { align-self: flex-end; border-color: #cde0fc; background: rgba(222,237,255,.93); }
+    .composer { display: grid; grid-template-rows: 30px 1fr; margin: 8px; border: 1px solid #ffffffdc; border-radius: 12px; background: rgba(255,255,255,.48); box-shadow: inset 0 1px #ffffffd5, 0 6px 18px #344c5c16; }
+    .composer-tools { display: flex; align-items: center; gap: 6px; padding: 0 8px; color: #75838f; }
+    .composer-tools button { display: grid; width: 26px; height: 26px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+    .composer-tools button:hover { background: rgba(255,255,255,.55); color: #3478a4; }
+    .composer-tools svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+    .composer-input { width: 100%; min-height: 42px; max-height: min(142px, 20vh); padding: 2px 10px 10px; overflow: hidden; resize: none; border: 0; outline: 0; color: #354955; background: transparent; font: inherit; font-size: var(--ui-font); line-height: 1.55; }
+    .composer-input::placeholder { color: #96a6b0; }
+    @media (min-width: 821px) {
+      .app-shell { grid-template-rows: var(--topbar-height) minmax(0,1fr); gap: var(--shell-gap); padding: var(--shell-pad); }
+      .app-topbar { gap: clamp(8px,1vw,14px); padding-inline: clamp(9px,1vw,16px); border-radius: var(--panel-radius); }
+      .brand-logo { height: clamp(26px,3.45vh,36px); }
+      .app-body { grid-template-columns: var(--rail-width) minmax(0,1fr); gap: var(--shell-gap); }
+      .rail { width: calc(var(--rail-width) - 4px); height: min(clamp(210px,27vh,252px),calc(100% - 24px)); border-radius: calc(var(--rail-width) / 2); }
+      .view.active.chat-view { grid-template-columns: clamp(220px,25%,360px) minmax(0,1fr); border-radius: var(--panel-radius); }
+      .chat-list { border-radius: calc(var(--panel-radius) - 1px) 0 0 calc(var(--panel-radius) - 1px); }
+      .chat-main { grid-template-rows: clamp(46px,5.4vh,54px) minmax(0,1fr) auto; }
+      .composer { min-height: clamp(84px,10.5vh,104px); max-height: min(190px,28vh); margin: clamp(6px,.6vw,9px); overflow: hidden; }
+      .view.active.mail-view { grid-template-columns: clamp(136px,12vw,190px) clamp(210px,18vw,300px) minmax(0,1fr); border-radius: var(--panel-radius); }
+      .mail-folders { padding: clamp(9px,.8vw,14px) clamp(6px,.65vw,11px); border-radius: calc(var(--panel-radius) - 1px) 0 0 calc(var(--panel-radius) - 1px); }
+      .conversation { min-height: clamp(51px,6.4vh,62px); padding: clamp(6px,.55vw,9px) clamp(8px,.7vw,12px); }
+      .list-heading { height: clamp(43px,5.2vh,52px); font-size: var(--ui-font); }
+      .conv-name, .chat-title strong { font-size: var(--ui-font); }
+      .conv-preview, .conv-time, .member-summary { font-size: var(--ui-small); }
+      .list-heading { font-size: 14px; }
+      .search-small { font-size: 12px; }
+      .search-small textarea { font-size: 12px; }
+      .conv-name, .chat-title strong { font-size: 14px; }
+      .conv-preview { font-size: 12px; }
+      .conv-time, .member-summary { font-size: 11px; }
+      .member-avatar { font-size: 10px; }
+      .bubble { font-size: 13px; }
+      .composer-input { font-size: 13px; }
+      .account { font-size: 11px; }
+      .folder { font-size: 12px; }
+      .mail-list-head { font-size: 12px; }
+      .mail-list-head button, .mail-sender { font-size: 11px; }
+      .mail-sender time { font-size: 10px; }
+      .mail-subject { font-size: 11px; }
+      .mail-snippet { font-size: 10px; }
+      .mail-toolbar { font-size: 11px; }
+      .mail-reading h2 { font-size: 18px; }
+      .mail-meta { font-size: 11px; }
+      .mail-text { font-size: 13px; }
+    }
+    @media (min-width: 1600px) {
+      :root { --ui-font: 13px; --ui-small: 11px; }
+      .search-form textarea { font-size: 15px; }
+      .chat-title { padding-inline: 20px; }
+      .chat-list .search-small { min-height: 38px; }
+      .conversation { min-height: 64px; }
+      .mail-folders { padding-inline: 14px; }
+      .mail-row { padding: 13px; }
+    }
+    @media (min-width: 821px) and (max-width: 1279px) {
+      :root { --ui-font: 11px; --ui-small: 9px; }
+      .view.active.chat-view { grid-template-columns: clamp(204px,24%,286px) minmax(0,1fr); }
+      .view.active.mail-view { grid-template-columns: clamp(124px,12vw,154px) clamp(194px,19vw,244px) minmax(0,1fr); }
+      .search-form textarea { font-size: 13px; }
+      .list-heading { font-size: 13px; }
+      .search-small, .search-small textarea { font-size: 11px; }
+      .conv-name, .chat-title strong { font-size: 13px; }
+      .conv-preview, .mail-text { font-size: 12px; }
+      .mail-reading h2 { font-size: 16px; }
+      .composer-input { font-size: 12px; }
+    }
+    .workbench-view { height: 100%; overflow: hidden auto; padding: 15px 17px 18px; border: 1px solid rgba(255,255,255,.92); border-radius: 18px; background: rgba(242,248,251,.5); background-clip: padding-box; clip-path: inset(0 round 18px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 11px 26px rgba(41,72,92,.1); }
+    .workbench-hero { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: space-between; min-height: 146px; overflow: hidden; padding: 20px 24px; border: 1px solid rgba(255,255,255,.94); border-radius: 8px; background: #eaf2f7 url("assets/brand-engineering/shanghai-glass-facade.jpg") center 20% / cover no-repeat; background-clip: padding-box; clip-path: inset(0 round 8px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.34), 0 7px 18px rgba(52,76,92,.11); }
+    .workbench-hero::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(90deg,rgba(244,249,252,.97) 0%,rgba(239,247,251,.9) 37%,rgba(227,239,247,.5) 68%,rgba(27,58,82,.05) 100%); }
+    .workbench-hero::after { content: ""; position: absolute; inset: 0 0 0 auto; z-index: 0; width: min(42%, 430px); pointer-events: none; opacity: .16; background: url("assets/brand-engineering/brand-mark.png") center / auto 92% no-repeat; filter: drop-shadow(0 12px 22px rgba(5,45,103,.24)); }
+    .hero-content { position: relative; z-index: 1; }
+    .hero-content small { color: #667a88; font-size: 10px; }
+    .hero-content h2 { margin: 7px 0 4px; color: #19344a; font-size: 20px; font-weight: 680; }
+    .hero-content p { margin: 0; color: #445e70; font-size: 11px; }
+    .hero-date { position: relative; z-index: 1; min-width: 120px; padding: 9px 12px; border: 1px solid rgba(255,255,255,.8); border-radius: 10px; background: rgba(13,58,89,.34); text-align: center; box-shadow: inset 0 1px rgba(255,255,255,.3), 0 5px 16px rgba(14,48,72,.16); backdrop-filter: blur(10px) saturate(118%); -webkit-backdrop-filter: blur(10px) saturate(118%); }
+    .hero-date strong { display: block; color: #f8fcff; font-size: 19px; text-shadow: 0 1px 3px rgba(6,34,54,.28); }
+    .hero-date span { color: rgba(244,250,255,.82); font-size: 9px; text-shadow: 0 1px 2px rgba(6,34,54,.22); }
+    .workbench-row-title { display: flex; justify-content: space-between; margin: 16px 1px 8px; font-size: 11px; font-weight: 650; }
+    .manage-apps { display: inline-flex; align-items: center; gap: 3px; border: 0; background: transparent; color: #798792; font-size: 9px; font-weight: 450; cursor: pointer; }
+    .manage-apps:hover { color: #3478a4; }
+    .manage-apps svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .app-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .app-tile { display: flex; align-items: center; gap: 9px; min-height: 56px; padding: 8px; border: 1px solid #ffffffdc; border-radius: 8px; background: rgba(255,255,255,.52); box-shadow: inset 0 1px #ffffffd5, 0 5px 15px #344c5c12; }
+    .app-tile .tile-icon { display: grid; width: 29px; height: 29px; flex: 0 0 29px; place-items: center; border-radius: 8px; background: #eaf2ff; color: #3478e5; }
+    .app-tile .tile-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .app-tile:nth-child(3n+2) .tile-icon { background: #e8f4ef; color: #42866c; }
+    .app-tile:nth-child(3n) .tile-icon { background: #fff0e5; color: #bd744a; }
+    .app-tile strong { display: block; color: #253640; font-size: 11px; font-weight: 650; }
+    .app-tile small { display: block; margin-top: 3px; color: #657782; font-size: 9px; }
+    .project-section { margin-top: 17px; }
+    .project-section-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 0 1px 8px; }
+    .project-section-head h3 { margin: 0; color: #263b48; font-size: 12px; font-weight: 680; }
+    .project-section-head p { margin: 3px 0 0; color: #657782; font-size: 9px; }
+    .project-section-head button { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #315f82; font-size: 10px; cursor: pointer; }
+    .project-section-head button svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .project-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+    .project-card { display: grid; grid-template-columns: minmax(96px,31%) minmax(0,1fr); min-height: 96px; overflow: hidden; border: 1px solid rgba(255,255,255,.96); border-radius: 8px; background: rgba(255,255,255,.86); box-shadow: 0 4px 12px rgba(39,66,83,.08); }
+    .project-photo { position: relative; min-height: 96px; overflow: hidden; background: #d6e2e9; }
+    .project-photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+    .project-card:hover .project-photo img { transform: scale(1.035); }
+    .project-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg,rgba(5,48,128,.06),rgba(13,38,58,.2)); pointer-events: none; }
+    .project-info { min-width: 0; padding: 10px 11px 9px; }
+    .project-kicker { display: flex; align-items: center; gap: 5px; color: #547183; font-size: 8px; }
+    .project-kicker img { width: 12px; height: 12px; object-fit: contain; opacity: .75; }
+    .project-info h4 { overflow: hidden; margin: 5px 0 3px; color: #253945; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .project-info p { overflow: hidden; margin: 0; color: #657782; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .project-progress { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; margin-top: 9px; color: #486172; font-size: 8px; }
+    .project-progress strong { color: #174f7c; font-size: 9px; font-weight: 650; }
+    .project-progress-track { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 3px; background: #dce6ec; }
+    .project-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#1d5f94,#59a4c4); }
+    .announcement { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 13px; }
+    .announcement article { min-height: 61px; padding: 10px 11px; border: 1px solid #ffffffdc; border-radius: 12px; background: rgba(255,255,255,.38); box-shadow: inset 0 1px #ffffffd5, 0 5px 15px #344c5c12; }
+    .announcement strong { color: #2b3d47; font-size: 11px; }
+    .announcement p { margin: 5px 0 0; color: #61747f; font-size: 10px; }
+    .view.active.mail-view { display: grid; grid-template-columns: 158px 230px minmax(0,1fr); height: 100%; overflow: hidden; border: 1px solid rgba(255,255,255,.92); border-radius: 18px; background: rgba(247,249,251,.5); background-clip: padding-box; box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 11px 26px rgba(41,72,92,.1); }
+    .settings-popover { position: absolute; z-index: 13; top: 76px; right: 12px; width: min(500px, calc(100% - 24px)); max-height: calc(100% - 88px); overflow: auto; padding: 16px; border: 1px solid rgba(255,255,255,.92); border-radius: 18px; background: rgba(239,247,251,.88); box-shadow: inset 0 0 0 1px rgba(255,255,255,.34), 0 22px 56px rgba(24,46,61,.24); backdrop-filter: blur(24px) saturate(135%); }
+    .settings-popover[hidden] { display: none; }
+    .settings-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .settings-head h2 { margin: 0; font-size: 16px; }
+    .settings-head p { margin: 5px 0 0; color: #6d7f8c; font-size: 10px; line-height: 1.5; }
+    .settings-close { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border: 0; border-radius: 9px; background: rgba(255,255,255,.46); cursor: pointer; }
+    .settings-popover .controls { grid-template-columns: 1fr; margin: 0; padding: 0; border: 0; background: transparent; }
+    .settings-popover .control-group { padding: 11px 0; border-top: 1px solid rgba(95,119,134,.12); }
+    .settings-popover .control-group:first-child { border-top: 0; padding-top: 0; }
+    .settings-popover .control-label { min-width: 64px; color: #526774; font-weight: 650; }
+    .notification-popover { position: absolute; z-index: 13; top: 76px; right: 58px; width: min(340px, calc(100% - 24px)); overflow: hidden; padding: 12px; border: 1px solid rgba(255,255,255,.92); border-radius: 16px; background: rgba(240,248,252,.92); box-shadow: inset 0 0 0 1px rgba(255,255,255,.34), 0 20px 48px rgba(24,46,61,.22); backdrop-filter: blur(22px) saturate(130%); }
+    .notification-popover[hidden] { display: none; }
+    .notification-head { display: flex; justify-content: space-between; align-items: center; margin: 2px 3px 8px; }
+    .notification-head h2 { margin: 0; font-size: 13px; }
+    .notification-head span { color: #778894; font-size: 10px; }
+    .notification-row { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 8px; align-items: center; width: 100%; min-height: 54px; padding: 7px 5px; border: 0; border-top: 1px solid rgba(99,123,139,.12); background: transparent; text-align: left; cursor: pointer; }
+    .notification-row:hover { background: rgba(255,255,255,.48); }
+    .notice-avatar { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; background: #dce9f1; color: #477080; font-size: 10px; font-weight: 650; }
+    .mail-notice { background: #f7e4dc; color: #99654e; }
+    .task-notice { background: #e4eee2; color: #5c7d60; }
+    .notification-row strong, .notification-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .notification-row strong { font-size: 10px; }
+    .notification-row small { margin-top: 3px; color: #74838e; font-size: 9px; }
+    .notification-row time { color: #8d9aa3; font-size: 9px; }
+    .mail-folders, .mail-list { overflow: hidden; border-right: 1px solid #ffffff9c; background: rgba(250,251,252,.4); }
+    .mail-folders { padding: 12px 9px; }
+    .account { overflow: hidden; margin: 0 4px 13px; color: #526371; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .folder { display: flex; justify-content: space-between; min-height: 29px; padding: 7px 8px; border-radius: 5px; color: #64727f; font-size: 10px; }
+    .folder.active { background: rgba(214,233,255,.34); color: #2469c7; box-shadow: inset 0 1px #ffffffa8, inset 0 -1px #ffffffa8; }
+    .folder em { font-style: normal; color: #8c9aa5; }
+    .mail-list-head { display: flex; justify-content: space-between; align-items: center; padding: 15px 11px 10px; border-bottom: 1px solid #e8edf2; font-size: 10px; font-weight: 650; }
+    .mail-list-head button { display: inline-flex; align-items: center; gap: 3px; padding: 3px 5px; border: 0; border-radius: 5px; background: transparent; color: #71808c; font-size: 9px; cursor: pointer; }
+    .mail-list-head button:hover { background: rgba(255,255,255,.55); }
+    .mail-list-head svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .mail-row { padding: 11px; border-bottom: 1px solid #e9edf2; }
+    .mail-row.active { background: rgba(214,233,255,.32); box-shadow: inset 0 1px #ffffff8c, inset 0 -1px #ffffff8c; }
+    .mail-sender { display: flex; justify-content: space-between; gap: 7px; font-size: 9px; font-weight: 650; }
+    .mail-sender time { color: #6d7e89; font-size: 9px; font-weight: 450; }
+    .mail-subject { overflow: hidden; margin-top: 5px; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .mail-snippet { overflow: hidden; margin-top: 4px; color: #647681; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .mail-reading { overflow: auto; padding: 19px 22px; background: rgba(255,255,255,.9); }
+    .mail-toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 11px; border-bottom: 1px solid #e8edf2; color: #687783; font-size: 9px; }
+    .mail-toolbar button { display: inline-flex; align-items: center; gap: 4px; min-height: 27px; padding: 3px 7px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font-size: inherit; cursor: pointer; }
+    .mail-toolbar button:hover { border-color: #ffffffb8; background: rgba(255,255,255,.45); color: #3478a4; }
+    .mail-toolbar svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
+    .mail-reading h2 { margin: 15px 0 12px; font-size: 14px; line-height: 1.5; }
+    .mail-meta { padding-bottom: 12px; border-bottom: 1px solid #edf0f3; color: #586d79; font-size: 10px; line-height: 1.7; }
+    .mail-text { max-width: 720px; margin-top: 17px; color: #34454f; font-size: 12px; line-height: 1.85; }
+    .mail-text p { margin: 0 0 10px; }
+    .review { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 15px; margin-top: 15px; }
+    .asset-info { display: flex; align-items: center; gap: 12px; min-height: 75px; padding: 10px; border: 1px solid #e1e7ee; border-radius: 7px; background: #fff; }
+    .asset-info img { width: 105px; height: 58px; object-fit: cover; border-radius: 4px; background: #edf1f4; }
+    .asset-info strong { display: block; font-size: 11px; }
+    .asset-info p { margin: 4px 0 0; color: #7b8893; font-size: 9px; line-height: 1.5; }
+    .asset-info a { color: #3173d7; text-decoration: none; }
+    .review-note { align-self: center; color: #6e7d89; font-size: 10px; line-height: 1.6; }
+    .footnote { margin-top: 12px; color: #75838f; font-size: 10px; line-height: 1.65; }
+    .footnote strong { color: #4a5964; }
+    @media (max-width: 820px) {
+      .page { width: 100%; height: 100%; padding: 0; }
+      .page-head { display: block; width: 100%; }
+      .page-head > div { width: 100%; }
+      .lead { max-width: 100%; }
+      .controls { grid-template-columns: 1fr; }
+      .stage { height: 100%; min-height: 0; }
+      .chat-view { grid-template-columns: 170px minmax(0,1fr); }
+      .mail-view { grid-template-columns: 112px 176px minmax(0,1fr); }
+      .mail-folders { padding-inline: 4px; }
+      .mail-reading { padding: 14px; }
+      .review { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .stage { height: 100%; min-height: 0; }
+      .app-body { grid-template-columns: 64px minmax(0,1fr); gap: 7px; }
+      .rail { width: 64px; }
+      .chat-view { grid-template-columns: 120px minmax(0,1fr); }
+      .conversation { grid-template-columns: 25px minmax(0,1fr); gap: 6px; padding-inline: 6px; }
+      .person { width: 25px; height: 25px; }
+      .conv-time { display: none; }
+      .bubble { max-width: 88%; }
+      .app-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .announcement { grid-template-columns: 1fr; }
+      .project-grid { grid-template-columns: 1fr; }
+      .project-card { grid-template-columns: 92px minmax(0,1fr); }
+      .hero-date { min-width: 72px; padding-inline: 6px; }
+      .hero-date { display: none; }
+      .workbench-hero { min-height: 128px; gap: 6px; padding-inline: 12px; background-position: 60% center; }
+      .workbench-hero h2 { font-size: 16px; }
+      .mail-view { grid-template-columns: 76px 116px minmax(0,1fr); }
+      .mail-reading { padding: 10px; }
+      .mail-toolbar { gap: 7px; flex-wrap: wrap; }
+      .mail-reading h2 { font-size: 11px; }
+      .mail-text { font-size: 11px; }
+      .mail-folders { padding: 10px 3px; }
+      .folder { padding-inline: 4px; font-size: 8px; }
+      .mail-row { padding: 9px 6px; }
+      .app-shell { grid-template-rows: 58px minmax(0,1fr); gap: 7px; padding: 7px; }
+      .app-topbar { grid-template-columns: minmax(0,1fr) auto; gap: 6px; padding-inline: 8px; }
+      .brand-logo { height: 26px; max-width: min(210px, 42vw); }
+      .top-right { gap: 6px; }
+      .top-action { width: 32px; height: 32px; border-radius: 10px; }
+      .avatar { width: 32px; height: 32px; }
+      .search-overlay { padding: clamp(104px, 16vh, 136px) 12px 12px; }
+      .search-dialog-content { padding: 13px 12px 10px; }
+      .search-dialog h2 { margin-bottom: 8px; }
+      .search-hint { margin-top: 6px; }
+      .asset-info img { width: 78px; }
+    }
+    @media (min-width: 821px) {
+      .view.active.mail-view { grid-template-columns: clamp(136px,12vw,190px) clamp(210px,18vw,300px) minmax(0,1fr); }
+      .account { font-size: 11px; }
+      .folder { font-size: 12px; }
+      .mail-list-head { font-size: 12px; }
+      .mail-list-head button, .mail-sender { font-size: 11px; }
+      .mail-sender time { font-size: 10px; }
+      .mail-subject { font-size: 11px; }
+      .mail-snippet { font-size: 10px; }
+      .mail-toolbar { font-size: 11px; }
+      .mail-reading h2 { font-size: 18px; }
+      .mail-meta { font-size: 11px; }
+      .mail-text { font-size: 13px; }
+    }
+    @media (min-width: 821px) and (max-width: 1279px) {
+      .view.active.mail-view { grid-template-columns: clamp(124px,12vw,154px) clamp(194px,19vw,244px) minmax(0,1fr); }
+      .mail-reading h2 { font-size: 16px; }
+      .mail-text { font-size: 12px; }
+    }
+    @media (min-width: 1600px) {
+      .view.active.mail-view { grid-template-columns: clamp(136px,12vw,190px) clamp(210px,18vw,300px) minmax(0,1fr); }
+      .mail-row { padding: 13px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="stage" id="stage" data-placement="full">
+      <div class="stage-bg" id="stage-bg"></div>
+      <div class="app-shell">
+        <liquid-glass id="app-glass-surfaces" class="app-glass-surfaces" mode="glass-panels" wallpaper="assets/liquid-wave-frame.jpg" dpr="1.25" aria-hidden="true"></liquid-glass>
+        <div class="app-topbar"><div class="top-left"><img class="brand-logo" src="assets/brand-logo.jpg" alt="团队品牌"></div><div class="top-right"><button type="button" class="top-action search-trigger" id="search-trigger" aria-label="打开搜索" aria-expanded="false" title="搜索"><svg class="search-open-icon" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.5"></circle><path d="m12.8 12.8 4.2 4.2"></path></svg><svg class="search-close-icon" viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"></path></svg></button><button type="button" class="top-action notification-trigger" id="notification-trigger" aria-label="打开提醒" aria-expanded="false" title="提醒"><svg viewBox="0 0 20 20"><path d="M5.5 8a4.5 4.5 0 0 1 9 0c0 5 2 5.2 2 6.5h-13c0-1.3 2-1.5 2-6.5Z"></path><path d="M8 16.5h4"></path></svg></button><button type="button" class="top-action settings-trigger" id="settings-trigger" aria-label="打开界面设置" aria-expanded="false" title="设置"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="3"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4"></path></svg></button><span class="avatar" aria-label="当前用户">林</span></div></div>
+        <div class="app-body">
+          <nav class="rail" aria-label="主导航" role="tablist" aria-orientation="vertical">
+            <liquid-glass id="rail-glass" class="rail-glass" mode="single-bottom-tabs" orientation="vertical" wallpaper="assets/liquid-wave-frame.jpg" dpr="1.5" aria-hidden="true"></liquid-glass>
+            <div class="rail-items">
+              <button type="button" class="rail-item" data-rail="chat" role="tab" aria-label="消息" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M20 14a2 2 0 0 1-2 2h-7l-4 4v-4H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"></path><path d="M8 9h8M8 12h5"></path></svg><span>消息</span></button>
+              <button type="button" class="rail-item" data-rail="mail" role="tab" aria-label="邮件" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg><span>邮件</span></button>
+              <button type="button" class="rail-item active" data-rail="workbench" role="tab" aria-label="工作台" aria-selected="true" tabindex="0"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg><span>工作台</span></button>
+            </div>
+          </nav>
+          <section class="view chat-view" data-page="chat">
+            <aside class="chat-list"><div class="list-heading"><span>最近会话</span><button type="button" class="list-add" aria-label="新建会话" title="新建会话"><svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"></path></svg></button></div><label class="search-small"><svg viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.5"></circle><path d="m12.8 12.8 4.2 4.2"></path></svg><textarea id="conversation-search" rows="1" placeholder="搜索会话" aria-label="搜索会话"></textarea></label>
+              <div class="conversation selected"><span class="person">研</span><div><div class="conv-name">项目研发群</div><div class="conv-preview">林同学：我把接口联调结果发群里</div></div><time class="conv-time">10:42</time></div>
+              <div class="conversation"><span class="person coral">周</span><div><div class="conv-name">周老师</div><div class="conv-preview">收到，下午例会再确认一下</div></div><time class="conv-time">09:28</time></div>
+              <div class="conversation"><span class="person green">产</span><div><div class="conv-name">产品协作</div><div class="conv-preview">文档已更新，请查收</div></div><time class="conv-time">昨天</time></div>
+              <div class="conversation"><span class="person">设</span><div><div class="conv-name">设计评审</div><div class="conv-preview">本周版本的交互稿</div></div><time class="conv-time">昨天</time></div>
+              <div class="conversation"><span class="person coral">课</span><div><div class="conv-name">课程项目小组</div><div class="conv-preview">明天上午讨论部署方案</div></div><time class="conv-time">周一</time></div>
+            </aside>
+            <div class="chat-main"><div class="chat-title"><strong>项目研发群</strong><span class="member-summary" aria-label="成员预览：林、周、陈、许等，共12位成员" title="部分成员预览，共 12 位成员"><span class="member-stack" aria-hidden="true"><i class="member-avatar">林</i><i class="member-avatar">周</i><i class="member-avatar member-more">···</i><i class="member-avatar member-tail">陈</i><i class="member-avatar member-tail">许</i></span><span>12 位成员</span></span></div><div class="messages"><div class="timestamp">今天 10:36</div><div class="bubble">服务端的分页接口已经合并，下一步联调未读数和消息游标。</div><div class="bubble outgoing">收到。我先把弱网下的加载顺序和空状态补一下。</div><div class="bubble">可以，列表骨架先稳定住，滚动区域别被新消息撑跳。</div><div class="bubble outgoing">我把交互稿和测试清单放到项目文档了。</div></div><div class="composer"><div class="composer-tools"><button type="button" aria-label="表情" title="表情"><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"></circle><path d="M7 12c.8 1 1.8 1.5 3 1.5s2.2-.5 3-1.5M7.5 8h.01M12.5 8h.01"></path></svg></button><button type="button" aria-label="附件" title="附件"><svg viewBox="0 0 20 20"><path d="m7 10.5 4.8-4.8a2.6 2.6 0 0 1 3.7 3.7L9 15.9a4 4 0 0 1-5.7-5.7l6.4-6.4"></path></svg></button><button type="button" aria-label="图片" title="图片"><svg viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="12" rx="2"></rect><circle cx="7.3" cy="8" r="1.2"></circle><path d="m4 14 4.1-3.8 2.2 2 2.2-2 3.5 3.4"></path></svg></button><button type="button" aria-label="文档" title="文档"><svg viewBox="0 0 20 20"><path d="M6 2.8h5l4 4V17H6a2 2 0 0 1-2-2V4.8a2 2 0 0 1 2-2Z"></path><path d="M11 3v4h4M7 11h6M7 14h6"></path></svg></button><button type="button" aria-label="更多" title="更多"><svg viewBox="0 0 20 20"><circle cx="4" cy="10" r="1"></circle><circle cx="10" cy="10" r="1"></circle><circle cx="16" cy="10" r="1"></circle></svg></button></div><textarea id="message-composer" class="composer-input" rows="1" placeholder="发送给 项目研发群" aria-label="消息内容"></textarea></div></div>
+          </section>
+          <section class="view workbench-view active" data-page="workbench">
+            <div class="workbench-hero" id="workbench-hero"><div class="hero-content"><small>工程监理协同　/　周一 · 11月2日</small><h2>工程项目协同中心</h2><p>3 项巡检待办 · 2 份监理记录待复核</p></div><div class="hero-date"><strong>09:41</strong><span>星期一　晴 18°</span></div></div>
+            <div class="workbench-row-title">常用应用 <button type="button" class="manage-apps">管理应用<svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"></path></svg></button></div>
+            <div class="app-grid"><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.4c0 3.5-2.4 6.3-6 8.1-3.6-1.8-6-4.6-6-8.1V5l6-2.5Z"></path><path d="m7 9.8 2 2 4-4"></path></svg></i><div><strong>审批中心</strong><small>2 项待处理</small></div></div><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><path d="M5 2.8h6l4 4V17H5a2 2 0 0 1-2-2V4.8a2 2 0 0 1 2-2Z"></path><path d="M11 3v4h4M6.5 11h7M6.5 14h7"></path></svg></i><div><strong>团队文档</strong><small>最近更新 14:20</small></div></div><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"></rect><path d="M6.5 2.5v3M13.5 2.5v3M3 8h14M6.5 11h2M11.5 11h2M6.5 14h2"></path></svg></i><div><strong>项目日历</strong><small>本周 5 场会议</small></div></div><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><path d="M3 16.5h14M5 14V9M10 14V4M15 14v-3"></path><circle cx="5" cy="7" r="1"></circle><circle cx="10" cy="3" r="1"></circle><circle cx="15" cy="9" r="1"></circle></svg></i><div><strong>数据看板</strong><small>团队进度</small></div></div><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><rect x="2.8" y="5" width="14.4" height="12" rx="2"></rect><path d="M7 5V3h6v2M7 9v.1M13 9v.1M6 13h8"></path></svg></i><div><strong>资产管理</strong><small>设备与物资</small></div></div><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><circle cx="7" cy="6.5" r="3"></circle><path d="M1.8 16a5.2 5.2 0 0 1 10.4 0M13 4a3 3 0 0 1 0 5.8M14 11a4.5 4.5 0 0 1 4.2 4.8"></path></svg></i><div><strong>通讯录</strong><small>组织架构</small></div></div><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><path d="M3 7h14v10H3zM6 7V4h8v3M6 10v4M10 10v4M14 10v4"></path></svg></i><div><strong>会议室</strong><small>空闲 4 间</small></div></div><div class="app-tile"><i class="tile-icon"><svg viewBox="0 0 20 20"><path d="M10 3.5v13M3.5 10h13"></path></svg></i><div><strong>添加应用</strong><small>自定义工作台</small></div></div></div>
+            <section class="project-section" aria-labelledby="project-section-title">
+              <div class="project-section-head"><div><h3 id="project-section-title">重点项目</h3><p>工程进度与现场动态</p></div><button type="button">全部项目<svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6"></path></svg></button></div>
+              <div class="project-grid">
+                <article class="project-card"><div class="project-photo"><img src="assets/brand-engineering/steel-frame-construction.jpg" alt="钢结构主体与塔吊施工现场" loading="lazy" decoding="async" style="object-position:52% 58%"></div><div class="project-info"><div class="project-kicker"><img src="assets/brand-engineering/brand-mark.png" alt="">施工监理 · 广州</div><h4>天河科创中心一期</h4><p>主体结构施工 · 最近巡检 09:24</p><div class="project-progress"><span>总体进度</span><strong>68%</strong><div class="project-progress-track" role="progressbar" aria-label="天河科创中心一期总体进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="68"><span style="width:68%"></span></div></div></div></article>
+                <article class="project-card"><div class="project-photo"><img src="assets/brand-engineering/china-construction-crane.jpg" alt="塔吊与主体施工现场" loading="lazy" decoding="async" style="object-position:48% 52%"></div><div class="project-info"><div class="project-kicker"><img src="assets/brand-engineering/brand-mark.png" alt="">安全巡检 · 佛山</div><h4>南海智造产业园</h4><p>机电安装阶段 · 2 项待复核</p><div class="project-progress"><span>总体进度</span><strong>42%</strong><div class="project-progress-track" role="progressbar" aria-label="南海智造产业园总体进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42"><span style="width:42%"></span></div></div></div></article>
+              </div>
+            </section>
+            <div class="announcement"><article><strong>团队公告</strong><p>本周五进行版本演示，请在周四前更新项目进度。</p></article><article><strong>最近访问</strong><p>订单预测项目　·　接口联调清单　·　需求评审记录</p></article></div>
+          </section>
+          <section class="view mail-view" data-page="mail">
+            <aside class="mail-folders"><div class="account">team@workspace.edu.cn</div><div class="folder active">收件箱 <em>28</em></div><div class="folder">星标邮件</div><div class="folder">草稿箱</div><div class="folder">已发送</div><div class="folder">已删除</div><div class="folder">垃圾邮件</div></aside>
+            <aside class="mail-list"><div class="mail-list-head"><span>收件箱</span><button type="button" aria-label="筛选邮件" title="筛选邮件">全部<svg viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"></path></svg></button></div><div class="mail-row active"><div class="mail-sender"><span>项目管理组</span><time>10:18</time></div><div class="mail-subject">本周迭代计划与任务分工</div><div class="mail-snippet">请大家确认本周目标和交付节点...</div></div><div class="mail-row"><div class="mail-sender"><span>教务办公室</span><time>09:42</time></div><div class="mail-subject">关于实验室预约调整的通知</div><div class="mail-snippet">本周四起预约规则更新如下...</div></div><div class="mail-row"><div class="mail-sender"><span>周老师</span><time>昨天</time></div><div class="mail-subject">课程项目阶段检查安排</div><div class="mail-snippet">请提前准备演示材料和问题记录...</div></div><div class="mail-row"><div class="mail-sender"><span>系统通知</span><time>周日</time></div><div class="mail-subject">文档协作权限变更</div><div class="mail-snippet">你已获得项目空间的编辑权限...</div></div></aside>
+            <article class="mail-reading"><div class="mail-toolbar"><button type="button"><svg viewBox="0 0 20 20"><path d="M7 7 3.5 10 7 13M4 10h8a4 4 0 0 1 4 4"></path></svg>回复</button><button type="button"><svg viewBox="0 0 20 20"><path d="m13 7 3.5 3-3.5 3M16 10H8a4 4 0 0 0-4 4"></path></svg>转发</button><button type="button"><svg viewBox="0 0 20 20"><path d="M3 5h14M8 5V3h4v2M6 5l1 12h6l1-12M8.5 8v6M11.5 8v6"></path></svg>删除</button><button type="button"><svg viewBox="0 0 20 20"><circle cx="4" cy="10" r="1"></circle><circle cx="10" cy="10" r="1"></circle><circle cx="16" cy="10" r="1"></circle></svg>更多</button></div><h2>本周迭代计划与任务分工</h2><div class="mail-meta">发件人　项目管理组 &lt;pm@workspace.edu.cn&gt;<br>收件人　项目研发群　·　今天 10:18</div><div class="mail-text"><p>各位同学好：</p><p>本周主要完成消息列表性能优化、工作台入口整理和邮件模块的基础联调。请各负责人在周三前更新当前进度，有依赖阻塞请在项目群同步。</p><p>周四下午安排一次集成演示，重点检查首次加载、弱网恢复、长列表滚动和页面返回状态。请将测试记录统一放在团队文档中。</p><p>谢谢，<br>项目管理组</p></div></article>
+          </section>
+        </div>
+      </div>
+      <div class="search-overlay" id="search-overlay" role="presentation" hidden>
+        <section class="search-dialog" role="dialog" aria-modal="true" aria-labelledby="search-title">
+          <liquid-glass id="search-dialog-glass" class="search-dialog-glass" mode="glass-panels" wallpaper="assets/liquid-wave-frame.jpg" dpr="0.75" aria-hidden="true"></liquid-glass>
+          <div class="search-dialog-content">
+            <h2 id="search-title">全局搜索</h2>
+            <form class="search-form" id="search-form" role="search">
+              <svg aria-hidden="true" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.5"></circle><path d="m12.8 12.8 4.2 4.2"></path></svg>
+              <textarea id="global-search-input" rows="1" autocomplete="off" placeholder="搜索消息、联系人、邮件和文件" aria-label="全局搜索关键词"></textarea>
+              <button id="search-clear" type="button" aria-label="清空搜索" title="清空"><svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"></path></svg></button>
+            </form>
+            <p class="search-hint" id="search-hint" aria-live="polite">输入关键词，Ctrl/Command + Enter 搜索</p>
+          </div>
+        </section>
+      </div>
+      <aside class="settings-popover" id="settings-popover" aria-labelledby="settings-title" hidden>
+        <div class="settings-head"><div><h2 id="settings-title">界面与动态背景</h2><p>模块、背景位置、素材和播放控制</p></div><button type="button" class="settings-close" id="settings-close" aria-label="关闭设置"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="m5 5 10 10M15 5 5 15"></path></svg></button></div>
+        <section class="controls" aria-label="界面设置">
+          <div class="control-group"><span class="control-label">模块</span><div class="segmented" id="view-controls"><button type="button" data-view="chat" aria-pressed="false">消息</button><button type="button" data-view="workbench" aria-pressed="true">工作台</button><button type="button" data-view="mail" aria-pressed="false">邮件</button></div></div>
+          <div class="control-group"><span class="control-label">背景位置</span><div class="segmented" id="placement-controls"><button type="button" data-placement="full" aria-pressed="true">应用底层</button><button type="button" data-placement="hero" aria-pressed="false">欢迎区底层</button><button type="button" data-placement="off" aria-pressed="false">关闭</button></div></div>
+          <div class="control-group range-control"><label class="control-label" for="opacity">背景强度</label><input id="opacity" type="range" min="0" max="55" value="32"><output class="range-value" id="opacity-value">32%</output></div>
+          <div class="control-group" id="asset-controls"><span class="control-label">动态素材</span><div class="segmented"><button type="button" data-asset="wave" aria-pressed="true">液态虹彩</button><button type="button" data-asset="orange" aria-pressed="false">暖橙流体</button><button type="button" data-asset="ink" aria-pressed="false">粉蓝墨水</button></div></div>
+          <div class="control-group"><span class="control-label">播放</span><div class="segmented" id="play-controls"><button type="button" data-play="on" aria-pressed="true">动态</button><button type="button" data-play="off" aria-pressed="false">静帧</button></div></div>
+        </section>
+      </aside>
+      <aside class="notification-popover" id="notification-popover" aria-labelledby="notification-title" hidden>
+        <div class="notification-head"><h2 id="notification-title">提醒</h2><span>与当前内容同步</span></div>
+        <button type="button" class="notification-row" data-notice-view="chat"><span class="notice-avatar">研</span><span><strong>项目研发群有新消息</strong><small>接口联调结果与弱网加载方案已更新</small></span><time>10:42</time></button>
+        <button type="button" class="notification-row" data-notice-view="mail"><span class="notice-avatar mail-notice">邮</span><span><strong>本周迭代计划与任务分工</strong><small>项目管理组发来一封新邮件</small></span><time>10:18</time></button>
+        <button type="button" class="notification-row" data-notice-view="workbench"><span class="notice-avatar task-notice">办</span><span><strong>今天还有 3 个待办</strong><small>进入工作台查看审批与项目日历</small></span><time>今天</time></button>
+      </aside>
+    </section>
+  </main>
+  <script src="assets/goose-hyper-glass/liquid-glass.js?v=vertical-tabs-20261101"></script>
+  <script>
+    const assets = {
+      wave: { src: 'assets/liquid-wave.mp4', poster: 'assets/liquid-wave-frame.jpg', title: '液态虹彩 · 本地视频', detail: '1600×1080 · 12 秒 · H.264 · 4.86 MB', source: null, rec: '当前方案：作为整个应用的最底层动态环境，悬浮胶囊和卡片只透出、模糊并轻度折射它，而不是把素材直接贴在卡片上。' },
+      orange: { src: 'assets/orange-gradient-anim.mp4', poster: 'assets/orange-gradient-poster.jpg', title: '暖橙流体 · 本地视频', detail: '4096×2490 · 4.58 秒 · H.264 · 含音轨 · 2.19 MB', source: null, rec: '适合作为登录、切换过场或低强度应用底层；暖色较强，进入邮件正文等阅读区域时应提高雾化遮罩。' },
+      ink: { src: 'assets/fluid-ink.mp4', poster: 'assets/fluid-ink-poster.jpg', title: '粉蓝墨水 · Mixkit 44827', detail: '1280×720 · 11.72 秒 · H.264 · 4.37 MB · Free License', source: 'https://mixkit.co/free-stock-video/abstract-video-of-moving-pink-and-blue-inks-in-a-44827/', rec: '可作应用底层候选；真实墨水纹理明显，卡片表面应只保留低强度透射，避免纹理压过信息层级。' }
+    };
+    const stage = document.querySelector('#stage');
+    const stageBg = document.querySelector('#stage-bg');
+    const hero = document.querySelector('#workbench-hero');
+    const glassSurfaces = document.querySelector('#app-glass-surfaces');
+    const railGlass = document.querySelector('#rail-glass');
+    const searchGlass = document.querySelector('#search-dialog-glass');
+    const searchInput = document.querySelector('#global-search-input');
+    const searchHint = document.querySelector('#search-hint');
+    const searchForm = document.querySelector('#search-form');
+    const searchDialog = document.querySelector('.search-dialog');
+    const conversationSearch = document.querySelector('#conversation-search');
+    const messageComposer = document.querySelector('#message-composer');
+    const settingsTrigger = document.querySelector('#settings-trigger');
+    const settingsPopover = document.querySelector('#settings-popover');
+    const settingsClose = document.querySelector('#settings-close');
+    const notificationTrigger = document.querySelector('#notification-trigger');
+    const notificationPopover = document.querySelector('#notification-popover');
+    railGlass.setTabs([[{ icon: '', label: '' }, { icon: '', label: '' }, { icon: '', label: '' }]]);
+    const video = document.createElement('video');
+    video.className = 'backdrop-video';
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    let selected = 'wave';
+    let placement = 'full';
+    let activeView = 'workbench';
+    let railIndex = 0;
+    let playbackEnabled = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let glassSurfaceLayoutKey = '';
+    let searchGlassLayoutKey = '';
+    let composerGlassRefreshTimer = 0;
+    let glassReadyTimer = 0;
+    const backdropCanvases = new WeakMap();
+    const backdropContexts = new WeakMap();
+    let lastGlassFrameAt = 0;
+    const glassTargets = [glassSurfaces, railGlass, searchGlass];
+    function updateVideoTarget() {
+      if (placement === 'off' || (placement === 'hero' && activeView !== 'workbench')) {
+        video.pause();
+        video.remove();
+        stageBg.style.backgroundImage = 'none';
+        return;
+      }
+      const target = placement === 'hero' ? hero : stageBg;
+      stageBg.style.backgroundImage = placement === 'full' ? `url("${assets[selected].poster}")` : 'none';
+      if (video.parentElement !== target) target.append(video);
+      if (playbackEnabled) video.play().catch(() => {}); else video.pause();
+    }
+    function syncGlassVideoFrame() {
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.parentElement) return;
+      const videoRect = video.getBoundingClientRect();
+      if (!videoRect.width || !videoRect.height) return;
+      const scale = Math.max(videoRect.width / video.videoWidth, videoRect.height / video.videoHeight);
+      const renderedWidth = video.videoWidth * scale;
+      const renderedHeight = video.videoHeight * scale;
+      const cropX = (renderedWidth - videoRect.width) / 2;
+      const cropY = (renderedHeight - videoRect.height) / 2;
+      const videoOpacity = Number.parseFloat(getComputedStyle(video).opacity) || 0;
+      const videoFilter = getComputedStyle(video).filter;
+      glassTargets.forEach((target) => {
+        if (!target.isConnected || (target === searchGlass && searchOverlay.hidden)) return;
+        const rect = target.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const pixelRatio = window.devicePixelRatio || 1;
+        const resolution = target === glassSurfaces ? Math.min(pixelRatio, 1.25) : Math.min(pixelRatio, 1.5);
+        const width = Math.max(2, Math.round(rect.width * resolution));
+        const height = Math.max(2, Math.round(rect.height * resolution));
+        let canvas = backdropCanvases.get(target);
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          backdropCanvases.set(target, canvas);
+          backdropContexts.set(target, canvas.getContext('2d', { alpha: false }));
+        }
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
+        const context = backdropContexts.get(target);
+        context.fillStyle = getComputedStyle(stage).backgroundColor;
+        context.fillRect(0, 0, width, height);
+        const left = Math.max(rect.left, videoRect.left);
+        const top = Math.max(rect.top, videoRect.top);
+        const right = Math.min(rect.right, videoRect.right);
+        const bottom = Math.min(rect.bottom, videoRect.bottom);
+        if (placement !== 'off' && right > left && bottom > top) {
+          const sourceX = (left - videoRect.left + cropX) / scale;
+          const sourceY = (top - videoRect.top + cropY) / scale;
+          const sourceWidth = (right - left) / scale;
+          const sourceHeight = (bottom - top) / scale;
+          const destX = (left - rect.left) / rect.width * width;
+          const destY = (top - rect.top) / rect.height * height;
+          const destWidth = (right - left) / rect.width * width;
+          const destHeight = (bottom - top) / rect.height * height;
+          context.globalAlpha = videoOpacity;
+          context.filter = videoFilter;
+          context.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight);
+          context.globalAlpha = 1;
+          context.filter = 'none';
+        }
+        target.setWallpaperSource(canvas);
+      });
+      scheduleGlassReveal();
+    }
+    function scheduleGlassReveal() {
+      if (document.documentElement.classList.contains('glass-ready') || glassReadyTimer) return;
+      glassReadyTimer = window.setTimeout(() => {
+        document.documentElement.classList.add('glass-ready');
+        glassReadyTimer = 0;
+      }, 120);
+    }
+    function scheduleGlassVideoFrames() {
+      if (video.paused || video.ended || !video.requestVideoFrameCallback) return;
+      video.requestVideoFrameCallback((now) => {
+        if (now - lastGlassFrameAt >= 100) {
+          lastGlassFrameAt = now;
+          syncGlassVideoFrame();
+        }
+        scheduleGlassVideoFrames();
+      });
+    }
+    video.addEventListener('loadeddata', syncGlassVideoFrame);
+    video.addEventListener('play', scheduleGlassVideoFrames);
+    video.addEventListener('error', scheduleGlassReveal);
+    function selectAsset(key) {
+      selected = key;
+      const asset = assets[key];
+      if (placement === 'full') stageBg.style.backgroundImage = `url("${asset.poster}")`;
+      video.src = asset.src;
+      video.poster = asset.poster;
+      searchGlass.setAttribute('wallpaper', asset.poster);
+      glassSurfaces.setAttribute('wallpaper', asset.poster);
+      railGlass.setAttribute('wallpaper', asset.poster);
+      video.load();
+      updateVideoTarget();
+      requestAnimationFrame(syncGlassVideoFrame);
+      document.querySelectorAll('[data-asset]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.asset === key)));
+    }
+    function setView(key) {
+      activeView = key;
+      document.querySelectorAll('[data-page]').forEach((v) => v.classList.toggle('active', v.dataset.page === key));
+      document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === key)));
+      document.querySelectorAll('[data-rail]').forEach((b) => {
+        const active = b.dataset.rail === key;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', String(active));
+        b.tabIndex = active ? 0 : -1;
+      });
+      const nextRailIndex = ['chat', 'mail', 'workbench'].indexOf(key);
+      if (nextRailIndex >= 0 && nextRailIndex !== railIndex) {
+        railIndex = nextRailIndex;
+        railGlass.setState({ selectedTab: railIndex });
+      }
+      requestAnimationFrame(() => {
+        refreshGlassSurfaces();
+      });
+      updateVideoTarget();
+      requestAnimationFrame(syncGlassVideoFrame);
+    }
+    function refreshGlassSurfaces() {
+      if (typeof glassSurfaces.setSurfaces !== 'function') return;
+      const layerRect = glassSurfaces.getBoundingClientRect();
+      const selectors = ['.search-trigger', '.chat-list', '.search-small', '.composer', '.workbench-hero', '.hero-date', '.app-tile', '.announcement article', '.mail-folders', '.mail-list'];
+      const surfaces = [];
+      const maskRects = [];
+      selectors.forEach((selector) => document.querySelectorAll(selector).forEach((element) => {
+        if (!element.getClientRects().length) return;
+        const rect = element.getBoundingClientRect();
+        const local = { x: rect.left - layerRect.left, y: rect.top - layerRect.top, w: rect.width, h: rect.height };
+        const leftEdgePanel = selector === '.chat-list' || selector === '.mail-folders';
+        const radius = selector === '.search-trigger' ? rect.width / 2 : leftEdgePanel || selector === '.mail-list' ? 0 : selector === '.search-small' ? 9 : selector === '.workbench-hero' ? 16 : selector === '.app-tile' || selector === '.announcement article' ? 12 : selector === '.hero-date' ? 10 : 7;
+        const maskRadius = leftEdgePanel ? Math.max(0, Math.min(24, parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0)) : radius;
+        surfaces.push({ id: `surface-${surfaces.length}`, radius, refractionHeight: 14, refractionAmount: -17, blurRadius: 1.25, saturation: 0.68, surfaceColor: [1, 1, 1, 0.16], rect: local });
+        maskRects.push({ ...local, radius: maskRadius, leftOnly: leftEdgePanel });
+      }));
+      const width = Math.max(1, Math.ceil(layerRect.width));
+      const height = Math.max(1, Math.ceil(layerRect.height));
+      const paths = maskRects.map(({ x, y, w, h, radius, leftOnly }) => {
+        if (!leftOnly || radius <= 0) return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${radius}" fill="white"/>`;
+        const r = Math.min(radius, w / 2, h / 2);
+        return `<path d="M ${x + r} ${y} H ${x + w} V ${y + h} H ${x + r} A ${r} ${r} 0 0 1 ${x} ${y + h - r} V ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} Z" fill="white"/>`;
+      }).join('');
+      const mask = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${paths}</svg>`)}")`;
+      const layoutKey = JSON.stringify({ width, height, surfaces, maskRects });
+      if (layoutKey === glassSurfaceLayoutKey) return;
+      glassSurfaceLayoutKey = layoutKey;
+      glassSurfaces.setSurfaces(surfaces);
+      glassSurfaces.style.setProperty('--glass-mask', mask);
+    }
+    function scheduleComposerGlassRefresh() {
+      window.clearTimeout(composerGlassRefreshTimer);
+      composerGlassRefreshTimer = window.setTimeout(refreshGlassSurfaces, 120);
+    }
+    customElements.whenDefined('liquid-glass').then(() => {
+      refreshGlassSurfaces();
+      if (placement === 'off' || video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) scheduleGlassReveal();
+      const surfaceResizeObserver = new ResizeObserver(refreshGlassSurfaces);
+      surfaceResizeObserver.observe(document.querySelector('.app-shell'));
+      document.querySelectorAll('[data-page], .workbench-view').forEach((element) => surfaceResizeObserver.observe(element));
+      document.querySelector('.workbench-view').addEventListener('scroll', refreshGlassSurfaces, { passive: true });
+      window.addEventListener('resize', refreshGlassSurfaces, { passive: true });
+    });
+    const searchOverlay = document.querySelector('#search-overlay');
+    const searchTrigger = document.querySelector('#search-trigger');
+    function fitTextarea(textarea, minHeight, maxHeight) {
+      textarea.style.height = '0px';
+      const contentHeight = textarea.scrollHeight;
+      const nextHeight = Math.min(maxHeight, Math.max(minHeight, contentHeight));
+      textarea.style.height = `${nextHeight}px`;
+      textarea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
+    }
+    function fitGlobalSearch() {
+      const canvas = fitGlobalSearch.measureCanvas || (fitGlobalSearch.measureCanvas = document.createElement('canvas'));
+      const context = canvas.getContext('2d');
+      const style = getComputedStyle(searchInput);
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const longestLine = searchInput.value.split('\n').reduce((longest, line) => Math.max(longest, context.measureText(line).width), 0);
+      const availableWidth = Math.max(0, window.innerWidth - 32);
+      const baseWidth = Math.min(520, availableWidth);
+      const maxWidth = Math.max(baseWidth, Math.min(780, window.innerWidth * 0.78, availableWidth));
+      const targetWidth = Math.min(maxWidth, Math.max(baseWidth, longestLine + 156));
+      searchDialog.style.setProperty('--search-dialog-width', `${searchInput.value ? targetWidth : baseWidth}px`);
+      fitTextarea(searchInput, 29, Math.min(168, window.innerHeight * 0.26));
+    }
+    function refreshSearchGlass() {
+      const width = searchGlass.clientWidth;
+      const height = searchGlass.clientHeight;
+      const key = `${width}:${height}`;
+      if (!width || !height || key === searchGlassLayoutKey) return;
+      searchGlassLayoutKey = key;
+      searchGlass.setSurfaces([{ id: 'search-panel', rect: { x: 1, y: 1, w: width - 2, h: height - 2 }, radius: 18, refractionHeight: 13, refractionAmount: -16, blurRadius: 1.3, saturation: 0.82, surfaceColor: [1, 1, 1, 0.2] }]);
+    }
+    function filterConversations() {
+      const keyword = conversationSearch.value.trim().toLocaleLowerCase('zh-CN');
+      document.querySelectorAll('.conversation').forEach((item) => {
+        item.hidden = Boolean(keyword) && !item.textContent.toLocaleLowerCase('zh-CN').includes(keyword);
+      });
+      fitTextarea(conversationSearch, 20, 72);
+      requestAnimationFrame(refreshGlassSurfaces);
+    }
+    function closeSettings(restoreFocus = false) {
+      settingsPopover.hidden = true;
+      settingsTrigger.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) settingsTrigger.focus();
+    }
+    function closeNotifications(restoreFocus = false) {
+      notificationPopover.hidden = true;
+      notificationTrigger.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) notificationTrigger.focus();
+    }
+    function closeSearch(restoreFocus = true) {
+      document.querySelector('.app-shell').classList.remove('search-open');
+      searchOverlay.hidden = true;
+      searchTrigger.setAttribute('aria-expanded', 'false');
+      searchTrigger.setAttribute('aria-label', '打开搜索');
+      searchTrigger.title = '搜索';
+      if (restoreFocus) searchTrigger.focus();
+    }
+    searchTrigger.addEventListener('click', () => {
+      if (!searchOverlay.hidden) {
+        closeSearch();
+        return;
+      }
+      closeSettings();
+      closeNotifications();
+      document.querySelector('.app-shell').classList.add('search-open');
+      searchOverlay.hidden = false;
+      searchTrigger.setAttribute('aria-expanded', 'true');
+      searchTrigger.setAttribute('aria-label', '关闭搜索');
+      searchTrigger.title = '关闭搜索';
+      requestAnimationFrame(() => {
+        fitGlobalSearch();
+        refreshSearchGlass();
+        syncGlassVideoFrame();
+        requestAnimationFrame(() => searchDialog.classList.add('search-ready'));
+        searchInput.focus();
+      });
+    });
+    settingsTrigger.addEventListener('click', () => {
+      const willOpen = settingsPopover.hidden;
+      closeSearch(false);
+      closeNotifications();
+      settingsPopover.hidden = !willOpen;
+      settingsTrigger.setAttribute('aria-expanded', String(willOpen));
+    });
+    settingsClose.addEventListener('click', () => closeSettings(true));
+    notificationTrigger.addEventListener('click', () => {
+      const willOpen = notificationPopover.hidden;
+      closeSearch(false);
+      closeSettings();
+      notificationPopover.hidden = !willOpen;
+      notificationTrigger.setAttribute('aria-expanded', String(willOpen));
+    });
+    document.querySelectorAll('[data-notice-view]').forEach((button) => button.addEventListener('click', () => {
+      setView(button.dataset.noticeView);
+      closeNotifications();
+    }));
+    searchForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      searchHint.textContent = searchInput.value.trim() ? `搜索：${searchInput.value.trim()}` : '输入关键词，Ctrl/Command + Enter 搜索';
+    });
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing) {
+        event.preventDefault();
+        searchForm.requestSubmit();
+      }
+    });
+    searchInput.addEventListener('input', fitGlobalSearch);
+    searchInput.addEventListener('compositionend', fitGlobalSearch);
+    conversationSearch.addEventListener('input', filterConversations);
+    conversationSearch.addEventListener('compositionend', filterConversations);
+    messageComposer.addEventListener('input', () => {
+      fitTextarea(messageComposer, 42, Math.min(142, window.innerHeight * 0.2));
+      scheduleComposerGlassRefresh();
+    });
+    messageComposer.addEventListener('compositionend', () => {
+      fitTextarea(messageComposer, 42, Math.min(142, window.innerHeight * 0.2));
+      scheduleComposerGlassRefresh();
+    });
+    document.querySelector('#search-clear').addEventListener('click', () => {
+      searchInput.value = '';
+      searchHint.textContent = '输入关键词，Ctrl/Command + Enter 搜索';
+      fitGlobalSearch();
+      searchInput.focus();
+    });
+    document.addEventListener('pointerdown', (event) => {
+      if (!searchOverlay.hidden && !event.target.closest('.search-dialog') && event.target !== searchTrigger) closeSearch(false);
+      if (!settingsPopover.hidden && !event.target.closest('#settings-popover') && !event.target.closest('#settings-trigger')) closeSettings();
+      if (!notificationPopover.hidden && !event.target.closest('#notification-popover') && !event.target.closest('#notification-trigger')) closeNotifications();
+    }, true);
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!searchOverlay.hidden) { event.preventDefault(); closeSearch(); return; }
+      if (!settingsPopover.hidden) { event.preventDefault(); closeSettings(true); return; }
+      if (!notificationPopover.hidden) { event.preventDefault(); closeNotifications(true); }
+    });
+    railGlass.addEventListener('lg-statechange', (event) => {
+      railIndex = event.detail.selectedTab;
+      const key = ['chat', 'mail', 'workbench'][railIndex];
+      if (key && key !== activeView) setView(key);
+    });
+    document.querySelector('.rail').addEventListener('keydown', (event) => {
+      const buttons = [...document.querySelectorAll('[data-rail]')];
+      const current = buttons.findIndex((button) => button === document.activeElement);
+      if (current < 0) return;
+      const next = event.key === 'ArrowDown' ? (current + 1) % buttons.length : event.key === 'ArrowUp' ? (current + buttons.length - 1) % buttons.length : event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : -1;
+      if (next >= 0) {
+        event.preventDefault();
+        buttons[next].focus();
+        setView(buttons[next].dataset.rail);
+      }
+    });
+    document.querySelectorAll('[data-rail]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.rail)));
+    document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+    document.querySelectorAll('[data-placement]').forEach((b) => b.addEventListener('click', () => {
+      placement = b.dataset.placement;
+      stage.dataset.placement = placement;
+      document.querySelectorAll('[data-placement]').forEach((item) => item.setAttribute('aria-pressed', String(item === b)));
+      updateVideoTarget();
+      requestAnimationFrame(syncGlassVideoFrame);
+    }));
+    document.querySelectorAll('[data-asset]').forEach((b) => b.addEventListener('click', () => selectAsset(b.dataset.asset)));
+    document.querySelector('#opacity').addEventListener('input', (event) => {
+      const value = Number(event.target.value);
+      document.querySelector('#opacity-value').textContent = `${value}%`;
+      video.style.setProperty('--backdrop-opacity', String(value / 100));
+      requestAnimationFrame(syncGlassVideoFrame);
+    });
+    document.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => {
+      const on = b.dataset.play === 'on';
+      playbackEnabled = on;
+      if (on) video.play().catch(() => {}); else video.pause();
+      requestAnimationFrame(syncGlassVideoFrame);
+      document.querySelectorAll('[data-play]').forEach((item) => item.setAttribute('aria-pressed', String(item === b)));
+    }));
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      placement = 'off';
+      playbackEnabled = false;
+      document.querySelectorAll('[data-placement]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.placement === 'off')));
+      document.querySelectorAll('[data-play]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.play === 'off')));
+    }
+    window.addEventListener('resize', () => {
+      fitGlobalSearch();
+      fitTextarea(conversationSearch, 20, 72);
+      fitTextarea(messageComposer, 42, Math.min(142, window.innerHeight * 0.2));
+      requestAnimationFrame(syncGlassVideoFrame);
+    }, { passive: true });
+    fitTextarea(conversationSearch, 20, 72);
+    fitTextarea(messageComposer, 42, Math.min(142, window.innerHeight * 0.2));
+    setView('workbench');
+    selectAsset(selected);
+  </script>
+</body>
+</html>
